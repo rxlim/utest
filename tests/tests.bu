@@ -1,0 +1,24 @@
+{
+    "type": "program",
+    "source": [
+        "test_*.cpp"
+    ],
+    "dependencies": [
+        "utest"
+    ],
+    "peers": [
+        "@{name}.run_tests"
+    ],
+    "sub_units": {
+        "run_tests": {
+            "type": "run",
+            "dependencies": [
+                "@{parent}"
+            ],
+            "call": [{"from_output": "@{parent}$program"}],
+            "log": [
+                "+stdout"
+            ]
+        }
+    }
+}
