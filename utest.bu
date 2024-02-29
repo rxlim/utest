@@ -1,0 +1,35 @@
+{
+    "type": "library",
+    "dependencies": [
+        "@{name}.api_interface_header"
+    ],
+    "source": [
+        "utest.cpp"
+    ],
+    "interface": [
+        "utest.h"
+    ],
+    "sub_units": {
+        "api_interface_header": {
+            "type": "file",
+            "enumerable": false,
+            "files": {
+                "generate": {
+                    "call": [
+                        "@{cdir}/expand_template.py",
+                        "@{cdir}/api_template.h",
+                        "BNAME=@{parent}",
+                        "--out", { "from_output": "@{name}#output" }
+                    ],
+                    "output": [
+                        {
+                            "name": "@{name}.h",
+                            "tags": ["interface-header-include"],
+                            "id": "output"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
