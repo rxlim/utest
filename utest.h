@@ -306,6 +306,13 @@ private:
         return ss.str();
     }
 
+    std::string to_string(const std::u8string& a)
+    {
+        std::stringstream ss;
+        ss << std::bit_cast<const char*>(a.c_str());
+        return ss.str();
+    }
+
     std::unordered_map<std::string, Barrier> barriers_;
     std::mutex barriers_mutex_;
 
