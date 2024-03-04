@@ -531,7 +531,7 @@ inline void report_result()
                                 "OK" : "FAILED") << std::endl;
 
     for (auto& failure : proof_failures()) {
-        std::cerr << " - " << failure.suite_name << " @ " << failure.filename
+        std::cout << " - " << failure.suite_name << " @ " << failure.filename
                   << ":" << failure.line_no << "\n"
                   << "   \"" << failure.proof_name << "\": " << failure.test
                   << " (expected '" << failure.actual_str << "' to be " << failure.expected
