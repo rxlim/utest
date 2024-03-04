@@ -41,6 +41,12 @@ inline std::mutex failures_mutex;
 
 bool register_suite_function(const char* name, std::function<void()> suite_function);
 
+template <typename A>
+concept is_string_literal = std::is_same_v<const char*, A> || (std::is_array_v<A> && std::is_same_v<std::remove_extent_t<std::remove_const_t<A>>, char>);
+
+template <typename A>
+concept is_u8string_literal = std::is_same_v<const char8_t*, A> || (std::is_array_v<A> && std::is_same_v<std::remove_extent_t<std::remove_const_t<A>>, char8_t>);
+
 // Helper barrier with timeout support
 class Barrier
 {
@@ -143,8 +149,8 @@ public:
                 add_failure(filename,
                             line_no,
                             actual_str + " == " + expected_str,
-                            to_string<A>(actual),
-                            to_string<E>(expected),
+                            to_string(actual),
+                            to_string(expected),
                             actual_str);
             }
             return false;
@@ -152,10 +158,19 @@ public:
         return true;
     }
 
+
     template <typename A, typename B>
     bool utest_cmp_eq(const A& a, const B& b)
     {
-        return a == b;
+        if constexpr (is_string_literal<A> || is_string_literal<B>) {
+            return std::string(a) == std::string(b);
+        }
+        else if constexpr (is_u8string_literal<A> || is_u8string_literal<A>) {
+            return std::u8string(a) == std::u8string(b);
+        }
+        else {
+            return a == b;
+        }
     }
 
     bool utest_cmp_eq(float a, float b)

@@ -65,4 +65,29 @@ MODEL("BaseFixture")
         fixture.mark_time("T1");
         ASSERT(fixture.time_since_mark("T1") >= 0);
     };
+
+    ENSURE("ASSERT_EQ can compare string literals")
+    {
+        ASSERT_EQ("test", "test");
+    };
+
+    ENSURE("ASSERT_EQ can compare u8string literals")
+    {
+        ASSERT_EQ(u8"test", u8"test");
+    };
+
+    ENSURE("ASSERT_EQ can compare floats")
+    {
+        ASSERT_EQ(1.0f, 1.0f);
+    };
+
+    ENSURE("ASSERT_EQ can compare ints")
+    {
+        ASSERT_EQ(3, 3);
+    };
+
+    ENSURE("ASSERT_EQ can compare doubles")
+    {
+        ASSERT_EQ(3.4, 3.4);
+    };
 }
