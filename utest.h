@@ -17,11 +17,6 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#endif
 
 struct ProofFailure
 {
@@ -488,21 +483,16 @@ inline void populate_suite_proofs()
 inline std::string get_environment_variable(const std::string& name)
 {
 #ifdef _WIN32
-    auto required_size = GetEnvironmentVariableA(name.c_str(), nullptr, 0);
-    if (required_size <= 0) {
-        return {};
-    }
+    char* buffer = nullptr;
+    size_t buffer_size = 0;
 
-    auto buf = std::make_unique<char[]>(required_size);
-    auto res = GetEnvironmentVariableA(name.c_str(),
-                                       buf.get(),
-                                       required_size);
-    if (res != 0) {
-        return buf.get();
-    }
-    else {
+    auto res = _dupenv_s(&buffer, &buffer_size, name.c_str());
+    if (res != 0 || buffer == nullptr) {
         return {};
     }
+    auto value = std::string(buffer, buffer_size);
+    free(buffer);
+    return value;
 #else
     return getenv(name.c_str());
 #endif
@@ -621,7 +611,7 @@ inline void write_results_file()
     f << "\n]\n";
 }
 
-inline int utest_main(int argc, char* argv[])
+inline int utest_main(int /*argc*/, char* /*argv*/[])
 {
     populate_suite_proofs();
     try {

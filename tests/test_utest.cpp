@@ -3,6 +3,15 @@
 using namespace std::literals;
 
 
+MODEL("Helpers")
+{
+    ENSURE("get_environment_variable returns proper values") {
+        auto path = get_environment_variable("PATH");
+        ASSERT(!path.empty());
+    };
+}
+
+
 MODEL("Barrier")
 {
     ENSURE("0-count barrier wait() with no arrive causes no timeout")
