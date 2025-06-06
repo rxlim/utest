@@ -494,7 +494,11 @@ inline std::string get_environment_variable(const std::string& name)
     free(buffer);
     return value;
 #else
-    return getenv(name.c_str());
+    auto env_value = getenv(name.c_str());
+    if (env_value != nullptr) {
+        return env_value;
+    }
+    return {};
 #endif
 }
 
