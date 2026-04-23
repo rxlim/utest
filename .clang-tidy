@@ -1,0 +1,6 @@
+---
+Checks: 'modernize-use-nullptr,bugprone-*,readability-*,-readability-uppercase-literal-suffix,-bugprone-easily-swappable-parameters'
+CheckOptions:
+  - key: readability-magic-numbers.IgnoredFloatingPointValues
+    value: '0.0;1.0;2.0'
+---

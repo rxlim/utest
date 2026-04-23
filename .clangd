@@ -1,0 +1,30 @@
+CompileFlags:
+  CompilationDatabase: "out/vanilla/windows-x64"
+  Add: -ferror-limit=0
+
+---
+
+Index:
+  Background: Build
+  External:
+    ExcludePaths: ["out/*", "**/out/**"]
+
+---
+
+If:
+  Platform: linux
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [-xc++, -std=c++20]
+  Remove: [-std=c11]
+
+---
+
+If:
+  Platform: windows
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [/TP, /std:c++20]
+  Remove: [/std=c11]
+
+---

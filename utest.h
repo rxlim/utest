@@ -64,7 +64,7 @@ public:
         condition_.notify_all();
     }
 
-    void wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds(1000000))
+    void wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds(default_timeout))
     {
         try {
             std::unique_lock<std::mutex> lock(count_mutex_);
@@ -88,6 +88,7 @@ private:
     std::mutex count_mutex_;
     int32_t count_ = 0;
     std::condition_variable condition_;
+    static constexpr auto default_timeout = 1000000;
 };
 
 
@@ -160,27 +161,29 @@ public:
 
 
     template <typename A, typename B>
-    bool utest_cmp_eq(const A& a, const B& b)
+    bool utest_cmp_eq(const A& a_value, const B& b_value)
     {
         if constexpr (is_string_literal<A> || is_string_literal<B>) {
-            return std::string(a) == std::string(b);
+            return std::string(a_value) == std::string(b_value);
         }
         else if constexpr (is_u8string_literal<A> || is_u8string_literal<A>) {
-            return std::u8string(a) == std::u8string(b);
+            return std::u8string(a_value) == std::u8string(b_value);
         }
         else {
-            return a == b;
+            return a_value == b_value;
         }
     }
 
-    bool utest_cmp_eq(float a, float b)
+    static bool utest_cmp_eq(float a_value, float b_value)
     {
-        return std::fabs(b - a) < 0.0001;
+        static constexpr auto min_diff = 0.0001f;
+        return std::fabs(b_value - a_value) < min_diff;
     }
 
-    bool utest_cmp_eq(double a, double b)
+    static bool utest_cmp_eq(double a_value, double b_value)
     {
-        return std::fabs(b - a) < 0.0001;
+        static constexpr auto min_diff = 0.0001;
+        return std::fabs(b_value - a_value) < min_diff;
     }
 
     bool utest_assert_no_throw(std::function<void()> statement,
@@ -292,9 +295,7 @@ public:
                 time_point::clock::now() - time_points_[name]
             ).count();
         }
-        else {
-            return std::chrono::milliseconds::max().count();
-        }
+        return std::chrono::milliseconds::max().count();
     }
 
     int64_t time_between_marks(const std::string& mark1,
@@ -304,35 +305,33 @@ public:
             || !time_points_.contains(mark2)) {
             return std::chrono::milliseconds::max().count();
         }
-        else {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(
-                time_points_[mark2] - time_points_[mark1]
-            ).count();
-        }
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            time_points_[mark2] - time_points_[mark1]
+        ).count();
     }
 
 
 private:
     template <typename A>
-    std::string to_string(const A& a)
+    std::string to_string(const A& a_value)
     {
-        std::stringstream ss;
-        ss << a;
-        return ss.str();
+        std::stringstream sstream;
+        sstream << a_value;
+        return sstream.str();
     }
 
-    std::string to_string(const std::u8string& a)
+    static std::string to_string(const std::u8string& a_value)
     {
-        std::stringstream ss;
-        ss << std::bit_cast<const char*>(a.c_str());
-        return ss.str();
+        std::stringstream sstream;
+        sstream << std::bit_cast<const char*>(a_value.c_str());
+        return sstream.str();
     }
 
-    std::string to_string(const char8_t* a)
+    static std::string to_string(const char8_t* a_value)
     {
-        std::stringstream ss;
-        ss << std::bit_cast<const char*>(a);
-        return ss.str();
+        std::stringstream sstream;
+        sstream << std::bit_cast<const char*>(a_value);
+        return sstream.str();
     }
 
     std::unordered_map<std::string, Barrier> barriers_;
@@ -365,15 +364,15 @@ class EmptyFixture : public Fixture { };
     utest_suite_proofs()[utest_active_suite_name()].push_back(std::unique_ptr<BaseFixture>{static_cast<BaseFixture*>(new given{})}); \
     utest_suite_proofs()[utest_active_suite_name()].back()->utest_suite_name = utest_active_suite_name(); \
     utest_suite_proofs()[utest_active_suite_name()].back()->utest_proof_name = what; \
-    utest_suite_proofs()[utest_active_suite_name()].back()->utest_wrapper = [&](BaseFixture* a) { \
-        given* utest_fixture_ = static_cast<given*>(a); \
+    utest_suite_proofs()[utest_active_suite_name()].back()->utest_wrapper = [&](BaseFixture* a_fixture) { \
+        given* utest_fixture_ = static_cast<given*>(a_fixture); \
         utest_fixture_->set_up(); \
         utest_fixture_->utest_proof(); \
         utest_fixture_->tear_down(); \
     }; \
     static_cast<Fixture*>(utest_suite_proofs()[utest_active_suite_name()].back().get())->utest_proof = (std::function<void()>)[=, &fixture = *static_cast<given*>(utest_suite_proofs()[utest_active_suite_name()].back().get())]() \
 
-#define ASSERT(pred) fixture.utest_assert((pred) ? true : false, __FILE__, __LINE__, #pred)
+#define ASSERT(pred) fixture.utest_assert(static_cast<bool>(pred), __FILE__, __LINE__, #pred)
 // Note: actual and expected might be expressions that need to be evaluated
 // and can thus not be passed to utest_assert_eq directly.
 #define ASSERT_EQ(actual, expected) ([&]{auto&& _utest_a=actual;auto&& _utest_e=expected; return fixture.utest_assert_eq(_utest_a, _utest_e, __FILE__,  __LINE__, #actual, #expected);}())
@@ -381,16 +380,16 @@ class EmptyFixture : public Fixture { };
 #define ASSERT_NO_THROW(statement) fixture.utest_assert_no_throw([&](){statement}, __FILE__, __LINE__)
 
 #define TRY_ASSERT(pred, timeoutms) ([&]{ \
-    for (int32_t ta__t = 0; ta__t < (timeoutms/25); ++ta__t) { \
-        if (fixture.utest_assert(pred ? true : false, __FILE__, __LINE__, #pred, false)) { \
+    for (int32_t ta__t = 0; ta__t < ((timeoutms)/25); ++ta__t) { \
+        if (fixture.utest_assert(static_cast<bool>(pred), __FILE__, __LINE__, #pred, false)) { \
             return true; \
         } \
         std::this_thread::sleep_for(std::chrono::milliseconds(25)); \
     } \
-    return fixture.utest_assert(pred ? true : false, __FILE__, __LINE__, #pred);}())
+    return fixture.utest_assert(static_cast<bool>(pred), __FILE__, __LINE__, #pred);}())
 
 #define TRY_ASSERT_EQ(actual, expected, timeoutms) ([&]{ \
-    for (int32_t ta__t = 0; ta__t < (timeoutms/25); ++ta__t) { \
+    for (int32_t ta__t = 0; ta__t < ((timeoutms)/25); ++ta__t) { \
         auto&& _utest_a=actual; \
         auto&& _utest_e=expected; \
         if (fixture.utest_assert_eq(_utest_a, _utest_e, __FILE__,  __LINE__, #actual, #expected, false)) { \
@@ -403,7 +402,7 @@ class EmptyFixture : public Fixture { };
     return fixture.utest_assert_eq(_utest_a, _utest_e, __FILE__,  __LINE__, #actual, #expected);}())
 
 #define TRY_ASSERT_THROW(statement, exception, timeoutms) ([&]{ \
-    for (int32_t ta__t = 0; ta__t < (timeoutms/25); ++ta__t) { \
+    for (int32_t ta__t = 0; ta__t < ((timeoutms)/25); ++ta__t) { \
         if (fixture.utest_assert_throw<exception>([&](){statement}, __FILE__, __LINE__, #exception, false)) { \
             return true; \
         } \
@@ -412,7 +411,7 @@ class EmptyFixture : public Fixture { };
     return fixture.utest_assert_throw<exception>([&](){statement}, __FILE__, __LINE__, #exception);}())
 
 #define TRY_ASSERT_NO_THROW(statement, timeoutms) ([&]{ \
-    for (int32_t ta__t = 0; ta__t < (timeoutms/25); ++ta__t) { \
+    for (int32_t ta__t = 0; ta__t < ((timeoutms)/25); ++ta__t) { \
         if (fixture.utest_assert_no_throw([&](){statement}, __FILE__, __LINE__, false)) { \
             return true; \
         } \
@@ -423,26 +422,26 @@ class EmptyFixture : public Fixture { };
 
 inline std::unordered_map<std::string, std::vector<std::function<void()>>>& utest_suites()
 {
-    static std::unordered_map<std::string, std::vector<std::function<void()>>> _s;
-    return _s;
+    static std::unordered_map<std::string, std::vector<std::function<void()>>> _suites;
+    return _suites;
 }
 
 inline std::unordered_map<std::string, std::vector<std::unique_ptr<BaseFixture>>>& utest_suite_proofs()
 {
-    static std::unordered_map<std::string, std::vector<std::unique_ptr<BaseFixture>>> _p;
-    return _p;
+    static std::unordered_map<std::string, std::vector<std::unique_ptr<BaseFixture>>> _proofs;
+    return _proofs;
 }
 
 inline std::string& utest_active_suite_name()
 {
-    static std::string _n;
-    return _n;
+    static std::string _active_name;
+    return _active_name;
 }
 
 inline std::vector<ProofFailure>& proof_failures()
 {
-    static std::vector<ProofFailure> _f;
-    return _f;
+    static std::vector<ProofFailure> _failures;
+    return _failures;
 }
 
 inline std::vector<std::string> passed_proofs;
@@ -582,37 +581,37 @@ inline void write_results_file()
 
     std::cout << " - Writing results to: " << res_file_path.string() << std::endl;
 
-    std::ofstream f(res_file_path);
-    f << "[\n";
+    std::ofstream result_file(res_file_path);
+    result_file << "[\n";
     bool first = true;
     for (auto proof : passed_proofs) {
         if (!first) {
-            f << ",\n";
+            result_file << ",\n";
         }
         else {
             first = false;
         }
         std::replace(proof.begin(), proof.end(), '"', '\'');
-        f << "  {\n";
-        f << "    \"type\": \"unittest\",\n";
-        f << "    \"name\": \"" << proof << "\",\n";
-        f << "    \"passed\": true\n";
-        f << "  }";
+        result_file << "  {\n";
+        result_file << "    \"type\": \"unittest\",\n";
+        result_file << "    \"name\": \"" << proof << "\",\n";
+        result_file << "    \"passed\": true\n";
+        result_file << "  }";
     }
     for (auto& failure : proof_failures()) {
         if (!first) {
-            f << ",\n";
+            result_file << ",\n";
         }
         else {
             first = false;
         }
-        f << "  {\n";
-        f << "    \"type\": \"unittest\",\n";
-        f << "    \"name\": \"" << failure.suite_name << "::" << failure.proof_name << "\",\n";
-        f << "    \"passed\": false\n";
-        f << "  }";
+        result_file << "  {\n";
+        result_file << "    \"type\": \"unittest\",\n";
+        result_file << "    \"name\": \"" << failure.suite_name << "::" << failure.proof_name << "\",\n";
+        result_file << "    \"passed\": false\n";
+        result_file << "  }";
     }
-    f << "\n]\n";
+    result_file << "\n]\n";
 }
 
 inline int utest_main(int /*argc*/, char* /*argv*/[])
