@@ -489,7 +489,7 @@ inline std::string get_environment_variable(const std::string& name)
     if (res != 0 || buffer == nullptr) {
         return {};
     }
-    auto value = std::string(buffer, buffer_size);
+    auto value = std::string(buffer, buffer_size - 1);
     free(buffer);
     return value;
 #else
